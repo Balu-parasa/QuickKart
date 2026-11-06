@@ -48,11 +48,15 @@ class CartController extends Notifier<Cart> {
   Future<void> decrement(String productId) async {
     final line = state.lineFor(productId);
     if (line == null) return;
-    state = state.updateQuantity(productId, line.quantity - 1);
+    final updated = state.updateQuantity(productId, line.quantity - 1);
+    await _storage.save(updated);
+    state = updated;
   }
 
   Future<void> remove(String productId) async {
-    state = state.removeLine(productId);
+    final updated = state.removeLine(productId);
+    await _storage.save(updated);
+    state = updated;
   }
 
   Future<void> applyCoupon(Coupon coupon) async {
@@ -62,7 +66,9 @@ class CartController extends Notifier<Cart> {
   }
 
   Future<void> removeCoupon() async {
-    state = state.withoutCoupon();
+    final updated = state.withoutCoupon();
+    await _storage.save(updated);
+    state = updated;
   }
 
   /// Replaces the whole cart (e.g. after reconciliation).

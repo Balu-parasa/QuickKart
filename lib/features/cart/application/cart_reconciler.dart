@@ -20,10 +20,6 @@ class CartReconciler {
   final CatalogApi catalogApi;
   final CouponApi couponApi;
 
-  /// ## TODO(F1) - implement
-  ///
-  /// Contract (checked by hidden tests - see ASSIGNMENT.md, Feature 1):
-  ///
   /// Returns a [ReconciliationResult] whose `cart` is what could be ordered
   /// right now:
   /// * every line's `unitPricePaise` equals the server's current price;
@@ -41,6 +37,88 @@ class CartReconciler {
   /// Throws an `ApiException` if the server cannot be reached. It must never
   /// return a partially reconciled cart.
   Future<ReconciliationResult> reconcile(Cart cart) async {
-    throw UnimplementedError('F1: implement CartReconciler.reconcile');
+    if (cart.isEmpty && cart.coupon == null) {
+      return ReconciliationResult(cart: cart, changes: const []);
+    }
+
+    final changes = <CartChange>[];
+
+    // 1. Fetch latest product info for all items in the cart
+    final productMap = <String, Product>{};
+    final missingIds = <String>{};
+
+    if (cart.lines.isNotEmpty) {
+      final ids = cart.lines.map((l) => l.productId).toList();
+      final batch = await catalogApi.getProductsByIds(ids);
+      for (final p in batch.products) {
+        productMap[p.id] = p;
+      }
+      missingIds.addAll(batch.missingIds);
+    }
+
+    // 2. Reconcile each line preserving order
+    final reconciledLines = <CartLine>[];
+    for (final line in cart.lines) {
+      if (missingIds.contains(line.productId)) {
+        changes.add(ProductUnavailable(productId: line.productId));
+        continue;
+      }
+
+      final serverProduct = productMap[line.productId];
+      if (serverProduct == null || !serverProduct.inStock) {
+        changes.add(OutOfStock(productId: line.productId));
+        continue;
+      }
+
+      // Check price changes
+      if (serverProduct.pricePaise != line.unitPricePaise) {
+        changes.add(PriceChanged(
+          productId: line.productId,
+          oldPricePaise: line.unitPricePaise,
+          newPricePaise: serverProduct.pricePaise,
+        ));
+      }
+
+      // Check available quantity: min of current stock and per-order limit
+      final availableQuantity = serverProduct.purchasableQuantity;
+      final int finalQuantity;
+      if (line.quantity > availableQuantity) {
+        changes.add(QuantityReduced(
+          productId: line.productId,
+          requestedQuantity: line.quantity,
+          availableQuantity: availableQuantity,
+        ));
+        finalQuantity = availableQuantity;
+      } else {
+        finalQuantity = line.quantity;
+      }
+
+      if (finalQuantity > 0) {
+        reconciledLines.add(line.copyWith(
+          name: serverProduct.name,
+          unitPricePaise: serverProduct.pricePaise,
+          quantity: finalQuantity,
+          maxPerOrder: availableQuantity,
+        ));
+      } else {
+        changes.add(OutOfStock(productId: line.productId));
+      }
+    }
+
+    // 3. Reconcile coupon
+    Coupon? reconciledCoupon = cart.coupon;
+    if (cart.coupon != null) {
+      try {
+        final validated = await couponApi.validate(cart.coupon!.code);
+        reconciledCoupon = validated;
+      } on ClientException catch (e) {
+        final reason = e.code == 'COUPON_EXPIRED' ? 'EXPIRED' : 'NOT_FOUND';
+        changes.add(CouponRemoved(code: cart.coupon!.code, reason: reason));
+        reconciledCoupon = null;
+      }
+    }
+
+    final reconciledCart = Cart(lines: reconciledLines, coupon: reconciledCoupon);
+    return ReconciliationResult(cart: reconciledCart, changes: changes);
   }
 }

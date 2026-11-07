@@ -16,19 +16,30 @@ class OrderApi {
   final ApiClient _client;
 
   /// `POST /v1/orders`. See API_CONTRACT.md for the error codes.
-  Future<Order> placeOrder(Cart cart, CartPricing pricing) async {
-    final json = await _client.post('/v1/orders', body: {
-      'items': [
-        for (final l in cart.lines)
-          {
-            'productId': l.productId,
-            'quantity': l.quantity,
-            'unitPricePaise': l.unitPricePaise,
-          }
-      ],
-      'couponCode': cart.coupon?.code,
-      'expectedTotalPaise': pricing.totalPaise,
-    }) as Map<String, dynamic>;
+  Future<Order> placeOrder(
+    Cart cart,
+    CartPricing pricing, {
+    String? idempotencyKey,
+  }) async {
+    final json = await _client.post(
+      '/v1/orders',
+      headers: {
+        if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+          'Idempotency-Key': idempotencyKey,
+      },
+      body: {
+        'items': [
+          for (final l in cart.lines)
+            {
+              'productId': l.productId,
+              'quantity': l.quantity,
+              'unitPricePaise': l.unitPricePaise,
+            }
+        ],
+        'couponCode': cart.coupon?.code,
+        'expectedTotalPaise': pricing.totalPaise,
+      },
+    ) as Map<String, dynamic>;
     return Order.fromJson(json);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -23,9 +25,10 @@ class ConfigRepository {
   }) : _remoteUpdates = remoteUpdates;
 
   final ApiClient _client;
-  // ignore: unused_field
   final KeyValueStore _store;
   final Stream<int> Function() _remoteUpdates;
+
+  static const _storageKey = 'config.v1';
 
   /// Fires (with the new config version) every time config is published
   /// from the console. Equivalent to Firebase's `onConfigUpdated`.
@@ -34,11 +37,36 @@ class ConfigRepository {
   /// Fetches the latest config.
   Future<AppConfig> load() async {
     try {
-      final json = await _client.get('/v1/config') as Map<String, dynamic>;
-      final values = (json['values'] as Map).cast<String, Object?>();
-      return AppConfig.fromValues(values);
-    } on ApiException {
-      return AppConfig.defaults();
+      final json = await _client.get('/v1/config', refresh: true);
+      if (json is Map && json['values'] is Map) {
+        final values = (json['values'] as Map).cast<String, Object?>();
+        try {
+          await _store.setString(_storageKey, jsonEncode(values));
+        } catch (_) {
+          // Local storage write failure should not prevent returning fresh config
+        }
+        return AppConfig.fromValues(values);
+      }
+      // Malformed server response payload falls back to cache or defaults
+      return await _loadFromCacheOrDefault();
+    } catch (_) {
+      // Handles ApiException, FormatException, TypeError, and any other transport or decoding errors
+      return await _loadFromCacheOrDefault();
     }
+  }
+
+  Future<AppConfig> _loadFromCacheOrDefault() async {
+    try {
+      final cached = await _store.getString(_storageKey);
+      if (cached != null) {
+        final decoded = jsonDecode(cached);
+        if (decoded is Map) {
+          return AppConfig.fromValues(decoded.cast<String, Object?>());
+        }
+      }
+    } catch (_) {
+      // Corrupt cache or storage read failure safely falls back to defaults
+    }
+    return AppConfig.defaults();
   }
 }

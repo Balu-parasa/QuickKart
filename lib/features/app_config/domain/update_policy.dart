@@ -33,6 +33,51 @@ class UpdatePolicy {
     required String minSupportedVersion,
     required String latestVersion,
   }) {
-    throw UnimplementedError('F2: implement UpdatePolicy.evaluate');
+    final current = _parse(currentVersion);
+    final minSupported = _parse(minSupportedVersion);
+    final latest = _parse(latestVersion);
+
+    if (current == null || minSupported == null || latest == null) {
+      return UpdateRequirement.none;
+    }
+
+    if (_compare(current, minSupported) < 0) {
+      return UpdateRequirement.required;
+    }
+    if (_compare(current, latest) < 0) {
+      return UpdateRequirement.optional;
+    }
+    return UpdateRequirement.none;
+  }
+
+  static List<int>? _parse(String version) {
+    final trimmed = version.trim();
+    if (trimmed.isEmpty) return null;
+
+    final parts = trimmed.split('.');
+    final segments = <int>[];
+    for (final part in parts) {
+      if (part.isEmpty) return null;
+      // Must contain only ASCII digits 0-9
+      for (var i = 0; i < part.length; i++) {
+        final code = part.codeUnitAt(i);
+        if (code < 48 || code > 57) return null;
+      }
+      final num = int.tryParse(part);
+      if (num == null || num < 0) return null;
+      segments.add(num);
+    }
+    return segments;
+  }
+
+  static int _compare(List<int> a, List<int> b) {
+    final maxLen = a.length > b.length ? a.length : b.length;
+    for (var i = 0; i < maxLen; i++) {
+      final segA = i < a.length ? a[i] : 0;
+      final segB = i < b.length ? b[i] : 0;
+      if (segA < segB) return -1;
+      if (segA > segB) return 1;
+    }
+    return 0;
   }
 }

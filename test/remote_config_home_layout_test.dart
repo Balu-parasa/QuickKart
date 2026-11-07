@@ -73,6 +73,18 @@ void main() {
       expect(config.deliveryFeePaise, equals(AppConfig.defaults().deliveryFeePaise));
       expect(config.storeOpen, isTrue);
     });
+
+    test('corrupted cache or storage read failure falls back safely to defaults', () async {
+      // Intentionally write corrupt non-JSON string into KeyValueStore
+      await h.store.setString('config.v1', '{invalid_json:');
+      h.server.chaos.offline = true;
+
+      final repo = h.read(configRepositoryProvider);
+      final config = await repo.load();
+
+      expect(config.deliveryFeePaise, equals(AppConfig.defaults().deliveryFeePaise));
+      expect(config.storeOpen, isTrue);
+    });
   });
 
   // ===========================================================================

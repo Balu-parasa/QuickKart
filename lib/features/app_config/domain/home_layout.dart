@@ -23,6 +23,43 @@ class HomeLayout {
   ];
 
   static List<HomeSection> parse(String? rawJson) {
-    throw UnimplementedError('F2: implement HomeLayout.parse');
+    if (rawJson == null || rawJson.trim().isEmpty) {
+      return defaultSections;
+    }
+    try {
+      final decoded = jsonDecode(rawJson);
+      if (decoded is! List) return defaultSections;
+
+      final result = <HomeSection>[];
+      final seen = <HomeSection>{};
+
+      for (final item in decoded) {
+        if (item is! String) continue;
+        final section = _fromId(item.trim());
+        if (section != null && seen.add(section)) {
+          result.add(section);
+        }
+      }
+
+      if (result.isEmpty) return defaultSections;
+      return result;
+    } catch (_) {
+      return defaultSections;
+    }
+  }
+
+  static HomeSection? _fromId(String id) {
+    switch (id) {
+      case 'banner':
+        return HomeSection.banner;
+      case 'categories':
+        return HomeSection.categories;
+      case 'deals':
+        return HomeSection.deals;
+      case 'all_products':
+        return HomeSection.allProducts;
+      default:
+        return null;
+    }
   }
 }

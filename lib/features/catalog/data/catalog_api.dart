@@ -21,13 +21,18 @@ class CatalogApi {
     String? cursor,
     int limit = 10,
     bool dealsOnly = false,
+    bool refresh = false,
   }) async {
-    final json = await _client.get('/v1/products', query: {
-      if (categoryId != null) 'category': categoryId,
-      if (cursor != null) 'cursor': cursor,
-      'limit': '$limit',
-      if (dealsOnly) 'deals': 'true',
-    }) as Map<String, dynamic>;
+    final json = await _client.get(
+      '/v1/products',
+      query: {
+        if (categoryId != null) 'category': categoryId,
+        if (cursor != null) 'cursor': cursor,
+        'limit': '$limit',
+        if (dealsOnly) 'deals': 'true',
+      },
+      refresh: refresh,
+    ) as Map<String, dynamic>;
     return CatalogPage(
       items: ProductDto.listFromJson(json['items']),
       nextCursor: json['nextCursor'] as String?,

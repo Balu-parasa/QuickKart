@@ -32,8 +32,9 @@ class OrderApi {
     return Order.fromJson(json);
   }
 
-  Future<List<Order>> getOrders() async {
-    final json = await _client.get('/v1/orders') as Map<String, dynamic>;
+  Future<List<Order>> getOrders({bool refresh = true}) async {
+    final json = await _client.get('/v1/orders', refresh: refresh)
+        as Map<String, dynamic>;
     return (json['items'] as List)
         .map((e) => Order.fromJson(e as Map<String, dynamic>))
         .toList();

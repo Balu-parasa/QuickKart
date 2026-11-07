@@ -121,7 +121,11 @@ class CatalogController extends FamilyNotifier<CatalogState, String> {
   Future<void> refresh() async {
     state = state.copyWith(isRefreshing: true, clearError: true);
     try {
-      final page = await _repo.getPage(categoryId: arg, limit: pageSize);
+      final page = await _repo.getPage(
+        categoryId: arg,
+        limit: pageSize,
+        refresh: true,
+      );
       state = CatalogState(
         items: page.items,
         nextCursor: page.nextCursor,

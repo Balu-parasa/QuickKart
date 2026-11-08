@@ -7,7 +7,11 @@ library;
 /// Formats paise for display.
 String formatMoney(int paise) {
   final rupees = paise ~/ 100;
-  return '₹$rupees';
+  final remainder = paise % 100;
+  if (remainder == 0) {
+    return '₹$rupees';
+  }
+  return '₹$rupees.${remainder.toString().padLeft(2, '0')}';
 }
 
 /// Converts a rupee amount coming from the (legacy) API into paise.

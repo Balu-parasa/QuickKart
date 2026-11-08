@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Sections the home screen knows how to render.
 enum HomeSection { banner, categories, deals, allProducts }
 

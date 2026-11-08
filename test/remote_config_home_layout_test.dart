@@ -93,7 +93,7 @@ void main() {
   group('Part C: AppConfigController live updates in bare container', () {
     test('AppConfigController updates automatically on remoteUpdates without app restart', () async {
       // In bare ProviderContainer, listen to appConfigControllerProvider
-      final controller = h.container.read(appConfigControllerProvider.notifier);
+      h.container.read(appConfigControllerProvider.notifier);
       final initialConfig = h.container.read(appConfigControllerProvider);
       expect(initialConfig.deliveryFeePaise, equals(2500));
 

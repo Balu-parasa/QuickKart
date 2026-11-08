@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
-import '../../../core/network/api_exceptions.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/key_value_store.dart';
 import '../domain/app_config.dart';

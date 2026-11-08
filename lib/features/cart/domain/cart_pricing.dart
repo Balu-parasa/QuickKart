@@ -40,7 +40,7 @@ class CartPricing {
 
     final payable = subtotal - discount;
     final threshold = config.freeDeliveryThresholdPaise;
-    final deliveryFee = payable > threshold ? 0 : config.deliveryFeePaise;
+    final deliveryFee = payable >= threshold ? 0 : config.deliveryFeePaise;
 
     return CartPricing(
       subtotalPaise: subtotal,

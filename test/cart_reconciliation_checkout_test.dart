@@ -6,9 +6,24 @@ import 'package:quickkart/features/cart/application/cart_reconciler.dart';
 import 'package:quickkart/features/cart/domain/cart.dart';
 import 'package:quickkart/features/cart/domain/coupon.dart';
 import 'package:quickkart/features/cart/domain/reconciliation.dart';
+import 'package:quickkart/features/catalog/domain/product.dart';
 import 'package:quickkart/features/checkout/application/checkout_controller.dart';
+import 'package:quickkart/mock_server/mock_server.dart';
 
 import 'helpers/test_harness.dart';
+
+Product productFromSnapshot(ServerProductSnapshot s, {String emoji = '🍌', String unit = '6 pcs'}) =>
+    Product(
+      id: s.id,
+      name: s.name,
+      categoryId: s.categoryId,
+      emoji: emoji,
+      unit: unit,
+      pricePaise: s.pricePaise,
+      mrpPaise: s.mrpPaise,
+      stock: s.stock,
+      maxPerOrder: s.maxPerOrder,
+    );
 
 void main() {
   late TestHarness h;
@@ -21,7 +36,7 @@ void main() {
   // ===========================================================================
   group('Part B: CartReconciler.reconcile()', () {
     test('detects price increases and marks requiresUserReview as true', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cart = Cart(lines: [
         CartLine.fromProduct(banana, quantity: 2),
       ]);
@@ -43,7 +58,7 @@ void main() {
     });
 
     test('detects price drops and applies them silently (requiresUserReview == false)', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cart = Cart(lines: [
         CartLine.fromProduct(banana, quantity: 2),
       ]);
@@ -65,7 +80,7 @@ void main() {
     });
 
     test('detects out of stock and removes item with review required', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cart = Cart(lines: [
         CartLine.fromProduct(banana, quantity: 2),
       ]);
@@ -82,7 +97,7 @@ void main() {
     });
 
     test('detects quantity limit reduction and adjusts quantity with review required', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cart = Cart(lines: [
         CartLine.fromProduct(banana, quantity: 4),
       ]);
@@ -103,7 +118,7 @@ void main() {
     });
 
     test('removes discontinued / inactive products as ProductUnavailable', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cart = Cart(lines: [
         CartLine.fromProduct(banana, quantity: 2),
       ]);
@@ -121,7 +136,7 @@ void main() {
     });
 
     test('removes expired coupons with review required', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final coupon = Coupon(
         code: 'SAVE10',
         type: CouponType.percent,
@@ -152,7 +167,7 @@ void main() {
   // ===========================================================================
   group('Part B: Safe Checkout & Idempotency', () {
     test('checkout returns CheckoutNeedsReview when server state has conflicts', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cartController = h.read(cartControllerProvider.notifier);
       await cartController.add(banana);
 
@@ -170,7 +185,7 @@ void main() {
     });
 
     test('lost order response does NOT create duplicate orders on retry (idempotency)', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cartController = h.read(cartControllerProvider.notifier);
       await cartController.add(banana);
 
@@ -186,7 +201,7 @@ void main() {
     });
 
     test('double tap / concurrent calls do not create duplicate orders', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       final cartController = h.read(cartControllerProvider.notifier);
       await cartController.add(banana);
 
@@ -202,7 +217,7 @@ void main() {
     });
 
     test('checkout while store is closed fails with honest message without sending request', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       await h.read(cartControllerProvider.notifier).add(banana);
 
       // Close store via remote config
@@ -229,7 +244,34 @@ void main() {
     });
 
     test('offline checkout fails with honest network message', () async {
-      final banana = h.server.product('fruits-01');
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
+      await h.read(cartControllerProvider.notifier).add(banana);
+
+      // Close store via remote config
+      h.server.publishConfig({
+        'store_open': false,
+        'store_closed_message': 'We are closed due to rain',
+      });
+      h.read(appConfigControllerProvider.notifier).hydrate(
+            AppConfig.fromValues(h.server.configValues),
+          );
+
+      final initialRequests = h.server.requestLog.length;
+
+      final checkout = h.read(checkoutControllerProvider.notifier);
+      final result = await checkout.placeOrder();
+
+      expect(result, isA<CheckoutFailure>());
+      final failure = result as CheckoutFailure;
+      expect(failure.message, contains('closed'));
+      expect(failure.canRetry, isFalse);
+      // No POST /v1/orders request was sent
+      expect(h.server.requestLog.length, equals(initialRequests));
+      expect(h.server.orderCount, equals(0));
+    });
+
+    test('offline checkout fails with honest network message', () async {
+      final banana = productFromSnapshot(h.server.product('fruits-01'));
       await h.read(cartControllerProvider.notifier).add(banana);
 
       h.server.chaos.offline = true;

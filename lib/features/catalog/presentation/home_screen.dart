@@ -47,7 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // If a required update is triggered, block entire app with full-screen non-dismissible view
     if (updateRequirement == UpdateRequirement.required) {
-      return _ForceUpdateScreen(
+      return ForceUpdateScreen(
         updateUrl: config.updateUrl,
         minVersion: config.minSupportedVersion,
       );
@@ -232,7 +232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               FilledButton(
                 onPressed: () async {
-                  final opened = await _launchUrl(config.updateUrl);
+                  final opened = await launchUpdateUrl(config.updateUrl);
                   if (!ctx.mounted) return;
                   if (opened) {
                     setState(() {
@@ -255,7 +255,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-Future<bool> _launchUrl(String rawUrl) async {
+Future<bool> launchUpdateUrl(String rawUrl) async {
   final trimmed = rawUrl.trim();
   final uri = Uri.tryParse(trimmed);
   if (uri == null || (!uri.isScheme('http') && !uri.isScheme('https')) || uri.host.isEmpty) {
@@ -268,22 +268,22 @@ Future<bool> _launchUrl(String rawUrl) async {
   }
 }
 
-class _ForceUpdateScreen extends StatefulWidget {
-  const _ForceUpdateScreen({required this.updateUrl, required this.minVersion});
+class ForceUpdateScreen extends StatefulWidget {
+  const ForceUpdateScreen({super.key, required this.updateUrl, required this.minVersion});
 
   final String updateUrl;
   final String minVersion;
 
   @override
-  State<_ForceUpdateScreen> createState() => _ForceUpdateScreenState();
+  State<ForceUpdateScreen> createState() => _ForceUpdateScreenState();
 }
 
-class _ForceUpdateScreenState extends State<_ForceUpdateScreen> {
+class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
   String? _errorMessage;
 
   Future<void> _handleUpdate() async {
     setState(() => _errorMessage = null);
-    final opened = await _launchUrl(widget.updateUrl);
+    final opened = await launchUpdateUrl(widget.updateUrl);
     if (!mounted) return;
     if (!opened) {
       setState(() {
@@ -294,8 +294,10 @@ class _ForceUpdateScreenState extends State<_ForceUpdateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -330,8 +332,9 @@ class _ForceUpdateScreenState extends State<_ForceUpdateScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _HomeBannerWidget extends StatelessWidget {

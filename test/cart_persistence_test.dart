@@ -2,8 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quickkart/features/cart/application/cart_controller.dart';
 import 'package:quickkart/features/cart/data/cart_storage.dart';
 import 'package:quickkart/features/cart/domain/coupon.dart';
+import 'package:quickkart/features/catalog/domain/product.dart';
+import 'package:quickkart/mock_server/mock_server.dart';
 
 import 'helpers/test_harness.dart';
+
+Product productFromSnapshot(ServerProductSnapshot s, {String emoji = '🍌', String unit = '1 pc'}) =>
+    Product(
+      id: s.id,
+      name: s.name,
+      categoryId: s.categoryId,
+      emoji: emoji,
+      unit: unit,
+      pricePaise: s.pricePaise,
+      mrpPaise: s.mrpPaise,
+      stock: s.stock,
+      maxPerOrder: s.maxPerOrder,
+    );
 
 void main() {
   late TestHarness h;
@@ -13,7 +28,7 @@ void main() {
 
   test('QK-101: decrementing a product quantity persists across app restart', () async {
     // 1. Setup: add 2 units of banana to the cart
-    final banana = h.server.product('fruits-01');
+    final banana = productFromSnapshot(h.server.product('fruits-01'), emoji: '🍌', unit: '6 pcs');
     final controller = h.read(cartControllerProvider.notifier);
     await controller.add(banana);
     await controller.increment(banana.id);
@@ -39,8 +54,8 @@ void main() {
 
   test('QK-101: removing a product persists across app restart', () async {
     // 1. Setup: add banana and milk to the cart
-    final banana = h.server.product('fruits-01');
-    final milk = h.server.product('dairy-01');
+    final banana = productFromSnapshot(h.server.product('fruits-01'), emoji: '🍌', unit: '6 pcs');
+    final milk = productFromSnapshot(h.server.product('dairy-01'), emoji: '🥛', unit: '500 ml');
     final controller = h.read(cartControllerProvider.notifier);
     await controller.add(banana);
     await controller.add(milk);
@@ -68,7 +83,7 @@ void main() {
 
   test('QK-101: removing a coupon persists across app restart', () async {
     // 1. Setup: add product and apply coupon
-    final banana = h.server.product('fruits-01');
+    final banana = productFromSnapshot(h.server.product('fruits-01'), emoji: '🍌', unit: '6 pcs');
     final controller = h.read(cartControllerProvider.notifier);
     await controller.add(banana);
 

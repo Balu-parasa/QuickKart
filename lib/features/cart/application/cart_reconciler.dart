@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_exceptions.dart';
 import '../../catalog/data/catalog_api.dart';
 import '../../catalog/data/catalog_repository.dart';
+import '../../catalog/domain/product.dart';
 import '../data/coupon_api.dart';
 import '../domain/cart.dart';
+import '../domain/coupon.dart';
 import '../domain/reconciliation.dart';
 
 final cartReconcilerProvider = Provider<CartReconciler>(

@@ -48,3 +48,10 @@ flutter test                         # all tests
 flutter test test/my_test.dart       # one file
 flutter analyze
 ```
+
+## Docs
+
+- [ASSIGNMENT.md](ASSIGNMENT.md): what to do and how it's evaluated
+- [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md): product rules (source of truth)
+- [docs/API_CONTRACT.md](docs/API_CONTRACT.md): backend API
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): code structure and public contract
